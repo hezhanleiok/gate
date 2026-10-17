@@ -415,10 +415,23 @@ def build_outputs(results, raw_count, sstp_count, source):
     }
     return data
 
+
+# edgetunnel 入口地址池
+EDGE_HOSTS = [
+    h.strip()
+    for h in os.environ.get(
+        "EDGE_HOSTS",
+        "saas.sin.fan:443,cdn.204910.best:443,www.mfyx.cn:443,p.etime.vip:443,cdn.ctn32.us.kg:443,cf.877774.xyz:443,spring.io:443,"
+        "cf.nyanya.moe:443,www.sloomb.com:443,op.chinwa.eu.cc:443,www.leics.police.uk:443,securecircle.com:443,www.shopify.com:443,"
+        "www.carousell.sg:443,www.dbs.com.sg:443,openai.com:443,linear.app:443,www.bilibili.com:443,uspto.gov:443,www.vmware.com:443",
+    ).split(",")
+    if h.strip()
+]
+
+NODES_URL = os.environ.get("NODES_URL", "https://pzb568.github.io/gate/nodes.txt")
+
 def build_nodes_text(data, edge_hosts):
-    """
-    生成纯节点行版本 (无注释): 每行 = 入口地址#名字$sstp://...
-    """
+    """生成纯节点行版本 (无注释): 每行 = 入口地址#名字$sstp://..."""
     countries = data["countries"]
     edge = edge_hosts
     lines = []

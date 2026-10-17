@@ -32,7 +32,7 @@ jobs:
         run: python vpngate.py
         env:
           # 已部署的检测 Worker (不要改动: 检测统一走这里)
-          CHECK_WORKER: "https://你的域名/check?sstp=vpn:vpn@"
+          CHECK_WORKER: ${{ secrets.DOMAIN }}
           CHECK_CONCURRENCY: "32"
           CHECK_TIMEOUT: "90"
 
@@ -68,4 +68,4 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Show site URL
-        run: 'echo "site: https://仓库用户名.github.io/gate/ (deploy outcome: ${{ steps.deployment.outcome }})"'
+        run: 'echo "site: https://pzb568.github.io/gate/ (deploy outcome: ${{ steps.deployment.outcome }})"'

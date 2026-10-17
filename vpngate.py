@@ -430,7 +430,7 @@ EDGE_HOSTS = [
 
 NODES_URL = os.environ.get("NODES_URL", "https://pzb568.github.io/gate/nodes.txt")
 
-def build_nodes_text(data):
+def build_nodes_text(data, edge_hosts):
     """生成纯节点行版本 (无注释): 每行 = 入口地址#名字$sstp://..."""
     countries = data["countries"]
     edge = edge_hosts

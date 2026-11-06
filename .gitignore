@@ -1,6 +1,21 @@
-# 由 vpngate.py 运行时生成 (data.json + index.html), 不入库
+# 由 vpngate.py 运行时生成（data.json / index.html / nodes.txt），不入库
 public/
-__pycache__/
-*.pyc
 
-Copy
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp-*
+.tmp_*
+pytest-of-*/

@@ -1,169 +1,351 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VPN Gate SSTP 节点检测</title>
-<style>
-  :root {
-    --bg: #0b1120; --panel: #111a2e; --panel2: #16233c; --border: #243450;
-    --text: #dbe7ff; --muted: #7f93b8; --accent: #4cc2ff; --ok: #2fd08a;
-    --res: #b48cff; --dc: #ffb84d; --unk: #8a9bb5;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; min-height: 100vh; padding: 20px; }
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  h1 { font-size: 22px; margin-bottom: 4px; }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
-  .card .k { color: var(--muted); font-size: 12px; }
-  .card .v { font-size: 24px; font-weight: 700; margin-top: 4px; }
-  .bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
-  .pill { background: var(--panel2); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; user-select: none; }
-  .pill.on { border-color: var(--accent); color: var(--accent); }
-  .legend { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
-  .country { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
-  .country .head { display: flex; justify-content: space-between; padding: 12px 16px; background: var(--panel2); font-weight: 600; cursor: pointer; flex-wrap: wrap; gap: 6px; }
-  .country .head .tag { font-size: 12px; color: var(--muted); font-weight: 400; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { padding: 9px 12px; text-align: left; border-top: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; }
-  tr:hover td { background: rgba(76,194,255,.05); }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; }
-  .b-res { background: rgba(180,140,255,.15); color: var(--res); }
-  .b-dc { background: rgba(255,184,77,.15); color: var(--dc); }
-  .b-unk { background: rgba(138,155,181,.15); color: var(--unk); }
-  .lat { color: var(--ok); }
-  code { background: var(--panel2); padding: 2px 6px; border-radius: 5px; font-size: 12px; cursor: pointer; }
-  code:hover { outline: 1px solid var(--accent); }
-  .empty { color: var(--muted); padding: 30px; text-align: center; }
-  .footer { color: var(--muted); font-size: 12px; margin-top: 20px; text-align: center; }
-  @media (max-width: 700px) { th, td { padding: 7px 8px; } .hide-m { display: none; } }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VPN Gate SSTP 节点检测 · 住宅/机房</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #1f2328;
+      background: #f6f8fa;
+      line-height: 1.6;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .sub { color: #656d76; font-size: 13px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .stat {
+      background: #fff;
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .stat .k { font-size: 12px; color: #656d76; }
+    .stat .v { font-size: 22px; font-weight: 600; margin-top: 2px; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 16px 0;
+    }
+    .toolbar input {
+      flex: 1 1 220px;
+      min-width: 180px;
+      padding: 8px 10px;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
+    }
+    button, .btn {
+      padding: 7px 12px;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      color: #1f2328;
+      text-decoration: none;
+    }
+    button:hover, .btn:hover { background: #f3f4f6; }
+    button.active { background: #0969da; border-color: #0969da; color: #fff; }
+    .country {
+      background: #fff;
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .country-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid #eaeef2;
+    }
+    .country-head strong { font-size: 15px; }
+    .pill {
+      font-size: 11px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      color: #656d76;
+      background: #f6f8fa;
+    }
+    .pill.res { color: #1a7f37; border-color: #b7e4c7; background: #eefbf1; }
+    .pill.dc { color: #9a6700; border-color: #f0d69a; background: #fff8e5; }
+    .node {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 14px;
+      border-top: 1px solid #f0f2f4;
+      font-size: 13px;
+    }
+    .node:first-child { border-top: none; }
+    .host { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .muted { color: #656d76; }
+    .grow { flex: 1 1 auto; }
+    .empty { color: #656d76; text-align: center; padding: 40px 0; }
+    footer { margin-top: 24px; color: #656d76; font-size: 12px; }
+    footer code { background: #eef1f4; padding: 1px 6px; border-radius: 6px; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: #1f2328;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity .2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    @media (max-width: 520px) {
+      body { padding: 14px; }
+      .node { padding: 8px 12px; }
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>VPN Gate · SSTP 节点检测</h1>
-  <div class="sub">节点来自 VPN Gate（仅 TCP 入口中继），检测由 Cloudflare Worker 执行，GitHub Actions 定时刷新</div>
+  <div class="wrap">
+    <header>
+      <h1>VPN Gate SSTP 节点检测</h1>
+      <div class="sub">
+        数据来自 VPN Gate（TCP/SSTP 端口），由 Cloudflare Worker 实测出口。
+        <span id="meta">加载中…</span>
+      </div>
+    </header>
 
-  <div class="cards" id="cards"></div>
+    <div class="stats" id="stats"></div>
 
-  <div class="bar">
-    <span class="pill on" data-f="all">全部</span>
-    <span class="pill" data-f="residential">住宅 IP</span>
-    <span class="pill" data-f="datacenter">数据中心</span>
-    <span class="pill" data-f="unknown">未识别</span>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="搜索主机 / 国家 / 运营商，例如 japan、ntt" />
+      <button data-filter="all" class="active">全部</button>
+      <button data-filter="residential">住宅</button>
+      <button data-filter="datacenter">机房</button>
+      <button data-filter="unknown">未识别</button>
+      <button id="copy-all">复制全部链接</button>
+      <a class="btn" href="nodes.txt" download="nodes.txt">下载 nodes.txt</a>
+      <button id="refresh">刷新</button>
+    </div>
+
+    <div id="list"><div class="empty">加载中…</div></div>
+
+    <footer>
+      <div>订阅地址：<code id="sub-url">…</code></div>
+      <div id="foot">本页面每 5 分钟自动检查一次更新；数据仅供参考，节点可用性与出口属性可能随时变化。</div>
+    </footer>
   </div>
-  <div class="legend">「住宅 / 数据中心」为基于中继注册类型与出口运营商的估算，非严格判定。</div>
+  <div class="toast" id="toast"></div>
 
-  <div id="countries"></div>
+  <script>
+    (function () {
+      'use strict';
 
-  <div class="footer" id="foot">加载中…</div>
-</div>
+      var state = { data: null, filter: 'all', keyword: '', timer: null };
 
-<script>
-let DATA = null, FILTER = "all";
+      function esc(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
 
-function copyLink(text) {
-  if (navigator.clipboard) navigator.clipboard.writeText(text);
-}
+      function toast(message) {
+        var el = document.getElementById('toast');
+        el.textContent = message;
+        el.classList.add('show');
+        setTimeout(function () { el.classList.remove('show'); }, 1800);
+      }
 
-function renderCards(d) {
-  const s = d.stats || {};
-  const items = [
-    ["最后更新", d.generated_at || "-", "时区 UTC"],
-    ["SSTP 节点", s.sstp_nodes, "筛选自 VPN Gate"],
-    ["已检测", s.checked, "提交给 Worker"],
-    ["可用节点", s.success, "success = true"],
-    ["国家数量", s.countries, "按可用节点统计"],
-    ["住宅(估算)", s.residential_est, "数据中心 " + (s.datacenter_est || 0)]
-  ];
-  document.getElementById("cards").innerHTML = items.map(function (x) {
-    return '<div class="card"><div class="k">' + x[0] + '</div><div class="v">' + x[1] + '</div><div class="k">' + x[2] + '</div></div>';
-  }).join("");
-}
+      function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(function () {
+            toast('已复制 ' + text.split('\n').length + ' 行');
+          }, function () { toast('复制失败，请手动选择'); });
+          return;
+        }
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        try {
+          document.execCommand('copy');
+          toast('已复制 ' + text.split('\n').length + ' 行');
+        } catch (err) {
+          toast('复制失败，请手动选择');
+        }
+        document.body.removeChild(area);
+      }
 
-function rowHtml(n) {
-  let badge;
-  if (n.residential === "residential") badge = '<span class="badge b-res">住宅</span>';
-  else if (n.residential === "datacenter") badge = '<span class="badge b-dc">机房</span>';
-  else badge = '<span class="badge b-unk">未知</span>';
-  const exit = n.exit ? ((n.exit.ip || "?") + " · " + (n.exit.org || n.exit.country || "")) : "-";
-  const date = (n.checked_at || "").split(" ")[0];
-  return '<tr>' +
-    '<td><code title="点击复制 sstp 链接">' + n.host + ':' + n.port + '</code></td>' +
-    '<td class="hide-m">' + (n.country_code || "") + '</td>' +
-    '<td>SSTP</td>' +
-    '<td class="lat">' + (n.latency_ms != null ? n.latency_ms + ' ms' : '-') + '</td>' +
-    '<td class="hide-m" style="color:var(--muted)">' + exit + '</td>' +
-    '<td>' + badge + '</td>' +
-    '<td class="hide-m" style="color:var(--muted)">' + date + '</td>' +
-    '</tr>';
-}
+      function statCard(label, value) {
+        return '<div class="stat"><div class="k">' + esc(label) + '</div><div class="v">' + esc(value) + '</div></div>';
+      }
 
-function renderCountries() {
-  const box = document.getElementById("countries");
-  const entries = Object.entries(DATA.countries || {})
-    .map(function (x) {
-      const nodes = x[1].nodes.filter(function (n) { return FILTER === "all" || n.residential === FILTER; });
-      return [x[0], Object.assign({}, x[1], { nodes: nodes, count: nodes.length })];
-    })
-    .filter(function (x) { return x[1].nodes.length > 0; })
-    .sort(function (a, b) { return b[1].count - a[1].count; });
+      function renderStats() {
+        var d = state.data;
+        if (!d) return;
+        var s = d.stats || {};
+        var items = [
+          ['可用节点', s.success != null ? s.success : 0],
+          ['国家/地区', s.countries != null ? s.countries : 0],
+          ['住宅出口', s.residential_est != null ? s.residential_est : 0],
+          ['机房出口', s.datacenter_est != null ? s.datacenter_est : 0],
+          ['已检测', s.checked != null ? s.checked : 0],
+          ['失败', s.failed != null ? s.failed : 0],
+          ['耗时', (d.duration_s != null ? d.duration_s : '?') + 's']
+        ];
+        document.getElementById('stats').innerHTML = items.map(function (it) {
+          return statCard(it[0], it[1]);
+        }).join('');
+        document.getElementById('meta').textContent =
+          '最后更新：' + (d.generated_at || '未知') +
+          '｜数据源：' + (d.source || '未知') +
+          '｜Worker：' + (d.worker_host || '未知');
+        document.getElementById('sub-url').textContent =
+          location.origin + location.pathname.replace(/[^/]*$/, '') + 'nodes.txt';
+      }
 
-  if (!entries.length) {
-    box.innerHTML = '<div class="country"><div class="empty">没有符合当前筛选的可用节点（本轮 Worker 判定全部不可用或无数据）</div></div>';
-    return;
-  }
-  box.innerHTML = entries.map(function (x) {
-    const name = x[0], g = x[1];
-    return '<div class="country">' +
-      '<div class="head" onclick="this.parentElement.classList.toggle(\'open\')">' +
-        '<span>🌏 ' + name + ' <span class="tag">' + (g.code || "") + '</span></span>' +
-        '<span class="tag">' + g.count + ' 个节点 · 住宅 ' + g.residential + ' · 机房 ' + g.datacenter + '</span>' +
-      '</div>' +
-      '<table><thead><tr><th>Host:Port</th><th class="hide-m">国码</th><th>协议</th><th>延迟</th><th class="hide-m">出口</th><th>类型</th><th class="hide-m">检测日期</th></tr></thead>' +
-      '<tbody>' + g.nodes.map(rowHtml).join("") + '</tbody></table>' +
-    '</div>';
-  }).join("");
-}
+      function nodeMatches(node, country) {
+        if (state.filter !== 'all' && node.residential !== state.filter) return false;
+        if (!state.keyword) return true;
+        var text = [
+          node.host, node.port, country.code, country.name,
+          node.exit && node.exit.org, node.exit && node.exit.country,
+          node.exit && node.exit.city
+        ].join(' ').toLowerCase();
+        return text.indexOf(state.keyword) !== -1;
+      }
 
-function render() {
-  renderCards(DATA);
-  renderCountries();
-  const s = DATA.stats || {};
-  document.getElementById("foot").textContent =
-    "数据时间 " + (DATA.generated_at || "?") + " · 来源 " + (DATA.source || "?") + " · 可用 " + (s.success || 0) + " / 检测 " + (s.checked || 0) + " · 点击 host:port 复制 sstp 链接";
-}
+      function render() {
+        var d = state.data;
+        var list = document.getElementById('list');
+        if (!d) return;
+        var groups = Object.keys(d.countries || {}).map(function (key) {
+          return d.countries[key];
+        }).sort(function (a, b) { return (b.count || 0) - (a.count || 0); });
 
-function setFilter(f) {
-  FILTER = f;
-  document.querySelectorAll(".pill").forEach(function (p) { p.classList.toggle("on", p.dataset.f === f); });
-  renderCountries();
-}
-document.querySelectorAll(".pill").forEach(function (p) { p.addEventListener("click", function () { setFilter(p.dataset.f); }); });
+        var html = '';
+        var total = 0;
+        groups.forEach(function (g) {
+          var nodes = (g.nodes || []).filter(function (n) { return nodeMatches(n, g); });
+          if (!nodes.length) return;
+          total += nodes.length;
+          var name = g.name || g.code || '未知';
+          html += '<section class="country"><div class="country-head">' +
+            '<strong>' + esc(name) + '</strong>' +
+            '<span class="pill">' + esc(g.code || '??') + '</span>' +
+            '<span class="pill">共 ' + esc(nodes.length) + ' 个</span>' +
+            '<span class="pill res">住宅 ' + esc(g.residential || 0) + '</span>' +
+            '<span class="pill dc">机房 ' + esc(g.datacenter || 0) + '</span>' +
+            '</div>';
+          nodes.forEach(function (n) {
+            var kind = n.residential === 'residential' ? '住宅'
+              : (n.residential === 'datacenter' ? '机房' : '未知');
+            var latency = n.latency_ms != null ? esc(n.latency_ms) + ' ms' : '—';
+            var org = n.exit && n.exit.org ? esc(n.exit.org) : '';
+            var exitCountry = n.exit && n.exit.country ? esc(n.exit.country) : '';
+            html += '<div class="node">' +
+              '<span class="host">' + esc(n.host) + ':' + esc(n.port) + '</span>' +
+              '<span class="pill ' + (n.residential === 'residential' ? 'res' : (n.residential === 'datacenter' ? 'dc' : '')) + '">' + kind + '</span>' +
+              '<span class="muted">' + latency + '</span>' +
+              (exitCountry ? '<span class="muted">出口 ' + exitCountry + '</span>' : '') +
+              (org ? '<span class="muted grow">' + org + '</span>' : '<span class="grow"></span>') +
+              '<button class="copy" data-link="' + esc('sstp://vpn:vpn@' + n.host + ':' + n.port) + '">复制</button>' +
+              '</div>';
+          });
+          html += '</section>';
+        });
 
-// 点击 host:port 复制 sstp://vpn:vpn@host:port
-document.addEventListener("click", function (e) {
-  const code = e.target.closest("code");
-  if (!code) return;
-  const m = code.textContent.match(/(.+):(\d+)$/);
-  if (m) copyLink("sstp://vpn:vpn@" + m[1] + ":" + m[2]);
-});
+        if (!html) {
+          html = '<div class="empty">没有匹配的节点</div>';
+        }
+        list.innerHTML = html;
 
-async function load() {
-  try {
-    const r = await fetch("data.json", { cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    DATA = await r.json();
-    render();
-  } catch (err) {
-    document.getElementById("foot").textContent = "data.json 加载失败: " + err + "（等待下一次 Action 生成）";
-  }
-}
-load();
-setInterval(load, 60000);
-</script>
+        list.querySelectorAll('button.copy').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            copyText(btn.getAttribute('data-link'));
+          });
+        });
+
+        var allLinks = [];
+        groups.forEach(function (g) {
+          (g.nodes || []).forEach(function (n) {
+            allLinks.push('sstp://vpn:vpn@' + n.host + ':' + n.port);
+          });
+        });
+        document.getElementById('copy-all').onclick = function () { copyText(allLinks.join('\n')); };
+        document.getElementById('foot').textContent =
+          '当前显示 ' + total + ' 个节点；共 ' + allLinks.length + ' 个可用节点，每 5 分钟自动刷新。';
+      }
+
+      function load() {
+        var url = 'data.json?ts=' + Date.now();
+        fetch(url, { cache: 'no-store' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            var same = state.data && state.data.generated_at === data.generated_at;
+            state.data = data;
+            if (!same) {
+              renderStats();
+              render();
+            }
+          })
+          .catch(function (err) {
+            document.getElementById('list').innerHTML =
+              '<div class="empty">数据加载失败：' + esc(err.message) +
+              '<br /><br />若刚部署完成，请等待 1–2 分钟后刷新。</div>';
+          });
+      }
+
+      document.getElementById('search').addEventListener('input', function (e) {
+        state.keyword = String(e.target.value || '').trim().toLowerCase();
+        render();
+      });
+
+      document.querySelectorAll('.toolbar button[data-filter]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.toolbar button[data-filter]').forEach(function (b) {
+            b.classList.remove('active');
+          });
+          btn.classList.add('active');
+          state.filter = btn.getAttribute('data-filter');
+          render();
+        });
+      });
+
+      document.getElementById('refresh').addEventListener('click', function () {
+        load();
+        toast('已刷新');
+      });
+
+      load();
+      state.timer = setInterval(load, 5 * 60 * 1000);
+    })();
+  </script>
 </body>
 </html>

@@ -1,7 +1,27 @@
 name: VPN Gate Node Check
 
+# 模板仓库默认不配置定时任务：需要自动更新时，把下面的注释替换成你自己的 cron。
+# 注意：GitHub 调度最小间隔约 5 分钟，但通常会延迟几分钟；仓库连续 60 天无提交会让定时任务自动停用。
+#
+# on:
+#   schedule:
+#     - cron: '*/30 * * * *'
+
 on:
   workflow_dispatch:
+    inputs:
+      max_nodes:
+        description: '最多检测多少个节点（0 = 全部）'
+        required: false
+        default: '0'
+      concurrency:
+        description: '并发数（建议 16–32）'
+        required: false
+        default: '32'
+      timeout:
+        description: '单节点检测超时（秒）'
+        required: false
+        default: '25'
 
 permissions:
   contents: read
@@ -16,6 +36,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,49 +46,84 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
+          cache: pip
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Get VPN Gate nodes + check via Cloudflare Worker + build page
-        run: python vpngate.py
+      - name: Validate worker secret
         env:
-          # 已部署的检测 Worker (不要改动: 检测统一走这里)
-          CHECK_WORKER: "https://你的域名/check?sstp=vpn:vpn@"
-          CHECK_CONCURRENCY: "32"
-          CHECK_TIMEOUT: "90"
-
-      - name: Ensure GitHub Pages is enabled (one-time auto setup)
+          DOMAIN: ${{ secrets.DOMAIN }}
         run: |
-          code=$(curl -s -o /dev/null -w '%{http_code}' \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
-          echo "Pages API status: $code"
-          if [ "$code" = "404" ]; then
-            echo "首次运行: 启用 GitHub Pages (source = GitHub Actions, 目录 /public)"
-            curl -sS -X PUT \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d '{"build_type":"workflow","source":{"branches":["main"],"path":"/public"}}' \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/pages"
-            echo
-            sleep 10
+          if [ -z "${DOMAIN}" ]; then
+            echo "::error::未配置检测地址。请在仓库 Settings → Secrets and variables → Actions 中新增 Secret：DOMAIN（只填 Worker 的 host，例如 abc.workers.dev）"
+            exit 1
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "检测域名已配置：${DOMAIN}"
 
-      - name: Configure Pages
+      - name: Run pipeline
+        env:
+          CHECK_WORKER: "https://${{ secrets.DOMAIN }}/check?sstp=vpn:vpn@"
+          CHECK_CONCURRENCY: ${{ github.event.inputs.concurrency || '32' }}
+          CHECK_TIMEOUT: ${{ github.event.inputs.timeout || '25' }}
+          MAX_CHECK_NODES: ${{ github.event.inputs.max_nodes || '0' }}
+          MIN_SUCCESS_RATIO: '0'
+        run: python vpngate.py
+
+      - name: Ensure GitHub Pages is enabled
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -u
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/pages"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json")
+
+          status=$(curl -sS -o /tmp/pages.json -w '%{http_code}' "${auth[@]}" "${api}")
+          echo "GET ${api} -> ${status}"
+
+          if [ "${status}" = "200" ]; then
+            echo "GitHub Pages 已启用"
+            exit 0
+          fi
+
+          if [ "${status}" = "404" ]; then
+            # 创建站点必须用 POST，且 workflow 构建类型不接受 source 字段
+            create=$(curl -sS -o /tmp/pages-create.json -w '%{http_code}' -X POST \
+              "${auth[@]}" -H "Content-Type: application/json" \
+              -d '{"build_type":"workflow"}' "${api}")
+            echo "POST ${api} -> ${create}"
+            case "${create}" in
+              201|204|409)
+                echo "GitHub Pages 已启用（或已存在），等待生效"
+                sleep 10
+                exit 0
+                ;;
+              *)
+                echo "::error::自动启用 Pages 失败（HTTP ${create}）。请打开仓库 Settings → Pages，把 Source 选为 GitHub Actions，然后重新运行本工作流。"
+                cat /tmp/pages-create.json 2>/dev/null || true
+                exit 1
+                ;;
+            esac
+          fi
+
+          echo "::error::查询 Pages 状态失败（HTTP ${status}），请检查仓库 Pages 设置或工作流权限。"
+          cat /tmp/pages.json 2>/dev/null || true
+          exit 1
+
+      - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload Pages artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'public'
+          path: public
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
       - name: Show site URL
-        run: 'echo "site: https://仓库用户名.github.io/gate/ (deploy outcome: ${{ steps.deployment.outcome }})"'
+        run: |
+          echo "订阅地址：https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/nodes.txt"
+          echo "仪表盘：  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"

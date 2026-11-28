@@ -798,7 +798,7 @@ def build_outputs(
         group["datacenter"] = sum(1 for n in group["nodes"] if n.get("residential") == "datacenter")
         group["unknown"] = group["count"] - group["residential"] - group["datacenter"]
         group["nodes"].sort(
-            key=lambda n: (n.get("residential") != "residential", n.get("latency_ms") is None, n.get("latency_ms") or 0)
+            key=lambda n: (n.get("latency_ms") is None, n.get("latency_ms") or 0)
         )
 
     stats = {
@@ -839,11 +839,10 @@ def build_nodes_text(data: dict[str, Any], edge_hosts: list[str], cfg: Config) -
         name = COUNTRY_ZH.get(code) or group.get("name") or code
         nodes = sorted(
             group["nodes"],
-            key=lambda n: (n.get("residential") != "residential", n.get("latency_ms") is None, n.get("latency_ms") or 0),
+            key=lambda n: (n.get("latency_ms") is None, n.get("latency_ms") or 0),
         )
-        residential = [n for n in nodes if n.get("residential") == "residential"]
-        others = [n for n in nodes if n.get("residential") != "residential"]
-        chosen = residential[: cfg.max_residential_per_country] + others[: cfg.max_datacenter_per_country]
+        max_nodes = cfg.max_residential_per_country + cfg.max_datacenter_per_country
+        chosen = nodes[:max_nodes]
         counters = {"residential": 0, "datacenter": 0, "unknown": 0}
         for node in chosen:
             link = f"sstp://vpn:vpn@{node['host']}:{node['port']}"
